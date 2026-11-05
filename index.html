@@ -21,7 +21,7 @@
     .no-scrollbar::-webkit-scrollbar { display: none; }
     .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
     
-    .font-note { font-family: 'Andika', sans-serif; font-size: 32px; letter-spacing: 0.05em; line-height: 1.5; }
+    .font-note { font-family: 'Andika', sans-serif; font-size: 38px; letter-spacing: 0.05em; }
     .slide-bg { background: linear-gradient(135deg, #1e3a8a 0%, #0f172a 100%); }
     
     .four-lines-bg {
@@ -306,6 +306,7 @@
 
       const [isListening, setIsListening] = useState(false);
       const [feedbackMsg, setFeedbackMsg] = useState("");
+      const [slideFailCount, setSlideFailCount] = useState(0);
 
       const [gachaState, setGachaState] = useState(null); // { phase: 'quiz'|'voice'|'result', currentQuiz: {}, resultItem: {} }
       const [quizOptions, setQuizOptions] = useState([]);
@@ -563,7 +564,7 @@
                           <span className="text-sm font-bold text-gray-600">{work.date} の作品 ({savedWorks.length - idx})</span>
                           <p className="text-sm font-note text-indigo-800 truncate">{work.sentence}</p>
                           <div className="flex gap-2">
-                            <button onClick={() => { setViewingWork(work); goToStep('VIEW_SLIDESHOW'); }} className="text-sm bg-indigo-100 hover:bg-indigo-200 text-indigo-800 font-bold py-2 px-3 rounded shadow-sm border border-indigo-300 flex-1">▶️ スライドを見る</button>
+                            <button onClick={() => { setViewingWork(work); setSlideFailCount(0); setFeedbackMsg(""); goToStep('VIEW_SLIDESHOW'); }} className="text-sm bg-indigo-100 hover:bg-indigo-200 text-indigo-800 font-bold py-2 px-3 rounded shadow-sm border border-indigo-300 flex-1">▶️ スライドを見る</button>
                             <button onClick={() => { setViewingWork(work); goToStep('IMAGE_INPUT'); }} className="text-sm bg-yellow-100 hover:bg-yellow-200 text-yellow-800 font-bold py-2 px-3 rounded shadow-sm border border-yellow-300 flex-1">✏️ 修正</button>
                           </div>
                         </div>
@@ -732,10 +733,14 @@
               <p className="text-center font-bold text-gray-600 mb-6">下の えいごの文を、じぶんの ノートに 書いてね。<br/>書きおわったら、先生に チェックしてもらおう！</p>
               
               <div className="bg-white border-2 border-gray-300 p-4 md:p-8 rounded-xl shadow-inner mb-8 overflow-hidden bg-[url('https://www.transparenttextures.com/patterns/lined-paper-2.png')]">
-                <div className="four-lines-bg rounded-lg border-2 border-gray-200 shadow-sm flex min-w-max bg-white/80">
-                  <span className="font-note font-bold px-4 text-gray-800">
-                    {viewingWork.sentence}
-                  </span>
+                <div className="text-left w-full overflow-x-auto pb-4 custom-scrollbar">
+                  <div className="min-w-max">
+                    <div className="four-lines-bg rounded-lg border-2 border-gray-200 shadow-sm flex min-w-max bg-white/80">
+                      <span className="font-note font-bold px-4 text-gray-800 flex items-baseline flex-nowrap">
+                        {viewingWork.sentence}
+                      </span>
+                    </div>
+                  </div>
                 </div>
               </div>
               
@@ -753,11 +758,15 @@
               <div className="absolute -top-6 left-1/2 transform -translate-x-1/2 bg-gray-600 text-white px-8 py-2 rounded-full font-bold text-xl shadow-md tracking-wider">先生専用 修正画面</div>
               <p className="text-center font-bold text-gray-700 mt-6 mb-6">児童のノートを確認し、必要であれば以下の英文を手直ししてください。<br/>修正内容はスライドに反映されます。</p>
               
-              <div className="mb-8">
+              <div className="mb-8 overflow-x-auto custom-scrollbar">
                 <label className="block text-sm font-bold text-teal-700 mb-2">英文の修正</label>
-                <textarea value={viewingWork.sentence} onChange={e => {
-                  setViewingWork({...viewingWork, sentence: e.target.value});
-                }} className="w-full p-4 border-2 border-teal-300 rounded-xl font-note text-2xl text-gray-800 focus:outline-none focus:bg-teal-50 resize-none leading-relaxed" rows="3" />
+                <div className="bg-gray-100 p-4 rounded-xl border border-gray-200 flex min-w-max">
+                  <span className="font-note font-bold flex items-baseline flex-nowrap gap-2 text-2xl py-2 w-full">
+                    <input type="text" value={viewingWork.sentence} onChange={e => {
+                      setViewingWork({...viewingWork, sentence: e.target.value});
+                    }} className="border-b-2 border-teal-400 focus:outline-none focus:bg-teal-50 px-2 pb-0 text-teal-700 bg-transparent min-w-[500px] leading-none m-0 font-note w-full" />
+                  </span>
+                </div>
               </div>
               
               <button onClick={() => {
@@ -814,6 +823,8 @@
                     } else {
                       saveWork(viewingWork);
                     }
+                    setSlideFailCount(0);
+                    setFeedbackMsg("");
                     goToStep('VIEW_SLIDESHOW'); 
                   } else {
                     alert("画像アドレスを入れてね！");
@@ -867,14 +878,19 @@
                   <div className="bg-gray-800 p-4 rounded-xl border border-gray-600 w-full max-w-lg">
                      {!canPlayGame ? (
                        <div className="flex flex-col items-center">
-                         <button onClick={() => {
-                           startListening(viewingWork.sentence, 
-                            () => { setFeedbackMsg("Great! 🎉"); setCanPlayGame(true); }, 
-                            () => {}
-                           );
-                         }} disabled={isListening} className={`w-16 h-16 rounded-full shadow-lg text-2xl mb-2 ${isListening ? 'bg-red-500 animate-pulse' : 'bg-teal-500 hover:bg-teal-600'} text-white transition flex items-center justify-center border-2 border-white`}>🎤</button>
+                         <div className="flex items-center justify-center gap-4 mb-2">
+                           <button onClick={() => {
+                             startListening(viewingWork.sentence, 
+                              () => { setFeedbackMsg("Great! 🎉"); setCanPlayGame(true); setSlideFailCount(0); }, 
+                              () => { setSlideFailCount(prev => prev + 1); }
+                             );
+                           }} disabled={isListening} className={`w-16 h-16 rounded-full shadow-lg text-2xl ${isListening ? 'bg-red-500 animate-pulse' : 'bg-teal-500 hover:bg-teal-600'} text-white transition flex items-center justify-center border-2 border-white`}>🎤</button>
+                           {slideFailCount >= 3 && (
+                             <button onClick={() => { setCanPlayGame(true); setSlideFailCount(0); setFeedbackMsg(""); }} className="text-sm bg-gray-600 hover:bg-gray-500 text-white px-4 py-2 rounded-full transition shadow border border-gray-500">⏭️ スキップ</button>
+                           )}
+                         </div>
                          <p className="text-gray-300 font-bold text-sm">{isListening ? "はなしてね..." : "マイクで正しく読めると、次へ進めるよ！"}</p>
-                         {feedbackMsg && <p className="text-green-400 font-bold mt-2">{feedbackMsg}</p>}
+                         {feedbackMsg && <p className={feedbackMsg.includes("エラー") || feedbackMsg.includes("おしい") || feedbackMsg.includes("マイクが") ? "text-yellow-400 font-bold mt-2 whitespace-pre-line" : "text-green-400 font-bold mt-2"}>{feedbackMsg}</p>}
                        </div>
                      ) : (
                        <div className="animate-bounce-in">
