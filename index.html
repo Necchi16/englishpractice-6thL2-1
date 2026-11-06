@@ -516,7 +516,7 @@
       };
 
       // --- Gacha Logic ---
-      const rollGacha = (isBonus, hasNextBonus = false) => {
+      const rollGacha = (isBonus, hasNextBonus = false, currentCoins) => {
         const rand = Math.random();
         let itemKey = 'normal';
         if (isBonus) {
@@ -530,13 +530,17 @@
         }
         const item = SALMON_TYPES[itemKey];
         const newItems = { ...items, [itemKey]: items[itemKey] + 1 };
-        saveProgress(totalCoins, newItems, level, exp, helpers);
+        
+        // 上書きを防ぐため、消費後のコイン数を受け取って保存する
+        const coinsToSave = currentCoins !== undefined ? currentCoins : totalCoins;
+        saveProgress(coinsToSave, newItems, level, exp, helpers);
+        
         setGachaState({ phase: 'result', item, hasNextBonus });
       };
 
       const startGacha = () => {
         if (totalCoins < 5) return;
-        saveProgress(totalCoins - 5, items, level, exp, helpers);
+        const nextCoins = totalCoins - 5;
         
         const targetWord = QUIZ_WORDS[Math.floor(Math.random() * QUIZ_WORDS.length)];
         let options = [targetWord];
@@ -550,7 +554,7 @@
         gachaTargetRef.current = targetWord; // Store target for next phases
         
         // まず通常ガチャを引く。次にボーナスがあるフラグを立てる
-        rollGacha(false, true); 
+        rollGacha(false, true, nextCoins); 
       };
 
       const gachaTargetRef = useRef(null);
@@ -726,7 +730,7 @@
                       <p className="font-bold text-gray-600 mb-4">{isListening ? "はなしてね..." : "マイクをおして発音！"}</p>
                       {feedbackMsg && <p className="text-blue-600 font-bold mb-4">{feedbackMsg}</p>}
 
-                      <button onClick={() => rollGacha(false, false)} className="text-gray-500 underline font-bold mt-4 block w-full bg-gray-100 py-2 rounded-lg hover:bg-gray-200">スキップしてボーナスを諦める</button>
+                      <button onClick={() => setGachaState(null)} className="text-gray-500 underline font-bold mt-4 block w-full bg-gray-100 py-2 rounded-lg hover:bg-gray-200">スキップしてボーナスを諦める</button>
                     </div>
                   )}
                   {gachaState.phase === 'animation' && (
