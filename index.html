@@ -619,7 +619,7 @@
                           <span className="text-sm font-bold text-gray-600">{work.date} の作品 ({savedWorks.length - idx})</span>
                           <p className="text-sm font-note text-indigo-800 truncate">{work.sentence}</p>
                           <div className="flex gap-2">
-                            <button onClick={() => { setViewingWork(work); setSlideFailCount(0); setFeedbackMsg(""); goToStep('VIEW_SLIDESHOW'); }} className="text-sm bg-indigo-100 hover:bg-indigo-200 text-indigo-800 font-bold py-2 px-3 rounded shadow-sm border border-indigo-300 flex-1">▶️ スライドを見る</button>
+                            <button onClick={() => { setViewingWork(work); setSlideFailCount(0); setLocalVoiceCleared(false); setFeedbackMsg(""); goToStep('VIEW_SLIDESHOW'); }} className="text-sm bg-indigo-100 hover:bg-indigo-200 text-indigo-800 font-bold py-2 px-3 rounded shadow-sm border border-indigo-300 flex-1">▶️ スライドを見る</button>
                             <button onClick={() => { setViewingWork(work); goToStep('IMAGE_INPUT'); }} className="text-sm bg-yellow-100 hover:bg-yellow-200 text-yellow-800 font-bold py-2 px-3 rounded shadow-sm border border-yellow-300 flex-1">✏️ 修正</button>
                           </div>
                         </div>
@@ -724,6 +724,13 @@
                       {feedbackMsg && <p className="text-blue-600 font-bold mb-4">{feedbackMsg}</p>}
 
                       <button onClick={() => rollGacha(false, false)} className="text-gray-500 underline font-bold mt-4 block w-full bg-gray-100 py-2 rounded-lg hover:bg-gray-200">スキップしてボーナスを諦める</button>
+                    </div>
+                  )}
+                  {gachaState.phase === 'animation' && (
+                    <div className="animate-pulse flex flex-col items-center justify-center py-8">
+                      <div className="text-8xl mb-6 animate-bounce">🎁</div>
+                      <h3 className="text-3xl font-bold text-yellow-600 mb-2">ガチャを引いています...</h3>
+                      <p className="text-gray-500 font-bold">何が出るかな？</p>
                     </div>
                   )}
                   {gachaState.phase === 'result' && (
@@ -897,6 +904,7 @@
                       saveWork(viewingWork);
                     }
                     setSlideFailCount(0);
+                    setLocalVoiceCleared(false);
                     setFeedbackMsg("");
                     goToStep('VIEW_SLIDESHOW'); 
                   } else {
@@ -949,15 +957,19 @@
                   
                   {/* 音声入力をしてからホーム画面に戻れる仕組み */}
                   <div className="bg-gray-800 p-4 rounded-xl border border-gray-600 w-full max-w-lg">
-                     {!canPlayGame ? (
+                     {!localVoiceCleared ? (
                        <div className="flex flex-col items-center">
                          <div className="flex items-center justify-center gap-4 mb-2">
                            <button onClick={() => {
                              startListening(viewingWork.sentence, 
                               () => { 
-                                setFeedbackMsg("Great! 🎉"); 
-                                if (viewingWork.hasPlayedGame === false || viewingWork.hasPlayedGame === undefined) {
+                                setLocalVoiceCleared(true);
+                                if (!viewingWork.hasPlayedGame) {
+                                  setFeedbackMsg("Great! 🎉 ゲームができるようになったよ！"); 
                                   setCanPlayGame(true); 
+                                  updateWorkGameStatus(viewingWork.date);
+                                } else {
+                                  setFeedbackMsg("Great! 🎉 (このスライドでのゲームはプレイ済みだよ)");
                                 }
                                 setSlideFailCount(0); 
                               }, 
@@ -966,8 +978,13 @@
                            }} disabled={isListening} className={`w-16 h-16 rounded-full shadow-lg text-2xl ${isListening ? 'bg-red-500 animate-pulse' : 'bg-teal-500 hover:bg-teal-600'} text-white transition flex items-center justify-center border-2 border-white`}>🎤</button>
                            {slideFailCount >= 3 && (
                              <button onClick={() => { 
-                               if (viewingWork.hasPlayedGame === false || viewingWork.hasPlayedGame === undefined) {
+                               setLocalVoiceCleared(true);
+                               if (!viewingWork.hasPlayedGame) {
+                                 setFeedbackMsg("スキップしました。ゲームができるようになったよ！");
                                  setCanPlayGame(true); 
+                                 updateWorkGameStatus(viewingWork.date);
+                               } else {
+                                 setFeedbackMsg("スキップしました。(このスライドでのゲームはプレイ済みだよ)");
                                }
                                setSlideFailCount(0); setFeedbackMsg(""); 
                              }} className="text-sm bg-gray-600 hover:bg-gray-500 text-white px-4 py-2 rounded-full transition shadow border border-gray-500">⏭️ スキップ</button>
@@ -978,10 +995,10 @@
                        </div>
                      ) : (
                        <div className="animate-bounce-in">
-                         <p className="text-green-400 font-bold text-xl mb-4">✨ 音声クリア！ ✨</p>
+                         <p className="text-green-400 font-bold text-xl mb-2 text-center">✨ 音声クリア！ ✨</p>
+                         {feedbackMsg && <p className="text-sm text-yellow-300 font-bold mb-4 text-center">{feedbackMsg}</p>}
                          <button onClick={() => {
                             if (document.fullscreenElement) document.exitFullscreen(); 
-                            if (!viewingWork.hasPlayedGame) updateWorkGameStatus(viewingWork.date);
                             setStep('HOME'); setStepHistory(['HOME']);
                          }} className="w-full bg-red-500 hover:bg-red-600 text-white font-bold py-3 rounded-full text-lg shadow-md animate-pulse">
                            🙋 友だちにスライドを見せた！(ホームへ)
