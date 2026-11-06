@@ -343,6 +343,7 @@
       const [isListening, setIsListening] = useState(false);
       const [feedbackMsg, setFeedbackMsg] = useState("");
       const [slideFailCount, setSlideFailCount] = useState(0);
+      const [localVoiceCleared, setLocalVoiceCleared] = useState(false); // この行を追加
       const [gachaState, setGachaState] = useState(null); // { phase: 'quiz'|'voice'|'result', currentQuiz: {}, resultItem: {}, hasNextBonus: boolean }
       const [quizOptions, setQuizOptions] = useState([]);
 
@@ -445,16 +446,18 @@
 
         recognition.onresult = (event) => {
           const trans = event.results[0][0].transcript.toLowerCase();
-          const cleanTransStr = trans.replace(/[^a-z]/g, '');
-          const cleanTargetStr = targetSentence.toLowerCase().replace(/[^a-z]/g, '');
+          
+          // 単語ごとに分割して50%以上合っているか判定する処理
+          const transWords = trans.replace(/[^a-z\s]/g, '').split(/\s+/).filter(w => w);
+          const targetWords = targetSentence.toLowerCase().replace(/[^a-z\s]/g, '').split(/\s+/).filter(w => w);
           
           let matchCount = 0;
-          const minLen = Math.min(cleanTransStr.length, cleanTargetStr.length);
-          const maxLen = Math.max(cleanTransStr.length, cleanTargetStr.length);
-          for(let i=0; i<minLen; i++) if(cleanTransStr[i] === cleanTargetStr[i]) matchCount++;
-          const matchRate = maxLen > 0 ? (matchCount / maxLen) : 0;
+          targetWords.forEach(tw => {
+            if (transWords.includes(tw)) matchCount++;
+          });
+          const matchRate = targetWords.length > 0 ? (matchCount / targetWords.length) : 0;
           
-          if (matchRate >= 0.8 || trans === targetSentence.toLowerCase().replace(/[.]/g, '')) {
+          if (matchRate >= 0.5 || trans.replace(/[^a-z\s]/g, '') === targetSentence.toLowerCase().replace(/[^a-z\s]/g, '')) {
             setFeedbackMsg("Excellent! 👏");
             setTimeout(() => { setFeedbackMsg(""); onSuccess(); }, 1500);
           } else {
